@@ -1,4 +1,3 @@
-#include <SDL_stdinc.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <uchardet.h>
@@ -91,109 +90,17 @@ uint32_t utf8_validate(uint32_t *state, const char *str, size_t len) {
 /*************************End of UTF-8 Validation Code*************************/
 
 
-/*
- * The default SDL_iconv_string allows broken conversions so we need
- * a more stricter replacement. Also there is no easy way to know the len
- * of the returned output without inspecting a sequence of \0 which is
- * slower than returning it in the bytes_written parameter.
- *
- * Adapted from: SDL/src/stdlib/SDL_iconv.c
- */
-char* SDL_iconv_string_custom(
-  const char *tocode, const char *fromcode, const char *inbuf,
-  size_t inbytesleft, size_t* bytes_written, bool strict
-) {
-  SDL_iconv_t cd;
-  char *string;
-  size_t stringsize;
-  char *outbuf;
-  size_t outbytesleft;
-  size_t retCode = 0;
-
-  cd = SDL_iconv_open(tocode, fromcode);
-  if (cd == (SDL_iconv_t) - 1) {
-    return NULL;
-  }
-
-  stringsize = inbytesleft > 4 ? inbytesleft : 4;
-  string = (char *) SDL_malloc(stringsize);
-  if (!string) {
-      SDL_iconv_close(cd);
-      return NULL;
-  }
-  outbuf = string;
-  outbytesleft = stringsize;
-  SDL_memset(outbuf, 0, 4);
-
-  bool has_error = false;
-  while (inbytesleft > 0 && !has_error) {
-    const size_t oldinbytesleft = inbytesleft;
-    retCode = SDL_iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-    switch (retCode) {
-    case SDL_ICONV_E2BIG:
-      {
-        char *oldstring = string;
-        stringsize *= 2;
-        string = (char *) SDL_realloc(string, stringsize);
-        if (!string) {
-          SDL_free(oldstring);
-          SDL_iconv_close(cd);
-          return NULL;
-        }
-        outbuf = string + (outbuf - oldstring);
-        outbytesleft = stringsize - (outbuf - string);
-        SDL_memset(outbuf, 0, 4);
-      }
-      break;
-    case SDL_ICONV_EILSEQ:
-      /* Try skipping some input data - not perfect, but... */
-      if (!strict) {
-        ++inbuf;
-        --inbytesleft;
-      } else {
-        has_error = true;
-      }
-      break;
-    case SDL_ICONV_EINVAL:
-    case SDL_ICONV_ERROR:
-      /* We can't continue... */
-      if (!strict)
-        inbytesleft = 0;
-      else
-        has_error = true;
-      break;
-    }
-    /* Avoid infinite loops when nothing gets converted */
-    if (!strict && oldinbytesleft == inbytesleft) {
-        break;
-    }
-  }
-  SDL_iconv_close(cd);
-
-  if (bytes_written)
-    *bytes_written = outbuf - string;
-
-  if (has_error) {
-    SDL_free(string);
-    return NULL;
-  }
-
-  return string;
-}
-
-
 /* Get the applicable byte order marks for the given charset */
-static const unsigned char* encoding_bom_from_charset(const char* charset, size_t* len) {
+static const char* encoding_bom_from_charset(const char* charset, size_t* len) {
   for (size_t i=0; bom_list[i].charset != NULL; i++){
     if (strcmp(bom_list[i].charset, charset) == 0) {
       if (len) *len = bom_list[i].len;
       return bom_list[i].bom;
     }
   }
-
-  if (len) *len = 0;
-
-  return NULL;
+  if (len) 
+    *len = 0;
+  return "";
 }
 
 
@@ -226,136 +133,10 @@ static const char* encoding_charset_from_bom(
 }
 
 
-/* Detects the encoding of a string. */
-const char* encoding_detect(const char* string, size_t string_len) {
-  static char charset[30];
-
-  if (string_len == 0) {
-		return "UTF-8";
-  }
-
-  memset(charset, 0, 30);
-
-  size_t bom_len = 0;
-  const char* bom_charset = encoding_charset_from_bom(
-    string, string_len, &bom_len
-  );
-
-  uint32_t state = UTF8_ACCEPT;
-  bool valid_utf8 = true;
-  uchardet_t handle = uchardet_new();
-
-	int retval = uchardet_handle_data(handle, string, string_len);
-	if (retval == 0) {
-    uchardet_data_end(handle);
-    const char* ucharset = uchardet_get_charset(handle);
-    strcpy(charset, ucharset);
-	}
-	uchardet_delete(handle);
-
-	if(utf8_validate(&state, string, string_len) == UTF8_REJECT) {
-		valid_utf8 = false;
-	}
-
-  state = UTF8_ACCEPT;
-  char* utf8_output = NULL;
-  size_t utf8_len = 0;
-  if (
-    bom_charset
-    &&
-    (
-      (utf8_output = SDL_iconv_string_custom(
-        "UTF-8", bom_charset,
-        string+bom_len, string_len-bom_len,
-        &utf8_len, true
-      )) != NULL
-      &&
-      utf8_validate(&state, utf8_output, utf8_len) != UTF8_REJECT
-    )
-  ) {
-    SDL_free(utf8_output);
-    return bom_charset;
-  }
-
-  if (utf8_output)
-    SDL_free(utf8_output);
-
-  if (valid_utf8) {
-    return "UTF-8";
-  } else if (*charset) {
-    return charset;
-  }
-
-  return NULL;
-}
-
-
 /*
- * encoding.detect(filename)
+ * encoding.detect(string)
  *
- * Try to detect the best encoding for the given file.
- *
- * Arguments:
- *  filename, the filename to check
- *
- * Returns:
- *  The charset string or nil
- *  The error message
- */
-int f_detect(lua_State *L) {
-  const char* file_name = luaL_checkstring(L, 1);
-
-#ifndef _WIN32
-  FILE* file = fopen(file_name, "rb");
-#else
-  wchar_t utf16[1024];
-  memset(utf16, 0, sizeof(utf16));
-  MultiByteToWideChar(CP_UTF8, 0, file_name, strlen(file_name), utf16, 1024);
-  FILE* file = _wfopen(utf16, L"rb");
-#endif
-
-  if (!file) {
-    lua_pushnil(L);
-    lua_pushfstring(L, "unable to open file '%s', code=%d", file_name, errno);
-    return 2;
-  }
-
-  fseek(file, 0, SEEK_END);
-
-  size_t file_size = ftell(file);
-  char* string = malloc(file_size);
-
-  if (!string) {
-    lua_pushnil(L);
-		lua_pushfstring(L, "out of ram while detecting charset of '%s'", file_name);
-		fclose(file);
-		return 2;
-  }
-
-  fseek(file, 0, SEEK_SET);
-  fread(string, 1, file_size, file);
-
-  const char* charset = encoding_detect(string, file_size);
-
-  fclose(file);
-  free(string);
-
-  if (charset) {
-    lua_pushstring(L, charset);
-  } else {
-    lua_pushnil(L);
-		lua_pushstring(L, "could not detect the file encoding");
-		return 2;
-  }
-
-  return 1;
-}
-
-
-/*
- * encoding.detect_string(filename)
- *
- * Same as encoding.detect() but for a string.
+ * Detects a string's encoding.
  *
  * Arguments:
  *  string, the string to check
@@ -366,10 +147,17 @@ int f_detect(lua_State *L) {
  */
 int f_detect_string(lua_State *L) {
 	size_t string_len = 0;
-  const char* string = luaL_checklstring(L, 1, &string_len);
-
-  const char* charset = encoding_detect(string, string_len);
-
+	const char* string = luaL_checklstring(L, 1);
+  if (string_len == 0) 
+		return "UTF-8";
+  static char charset[30] = {0};
+  size_t bom_len = 0;
+  const char* bom_charset = encoding_charset_from_bom(string, string_len, &bom_len);
+  uchardet_t ud = uchardet_new();
+  uchardet_handle_data(ud, buffer, string_len);
+  uchardet_data_end(ud);
+  const char* charset = uchardet_get_charset(ud);
+  uchardet_delete(ud);
   if (charset) {
     lua_pushstring(L, charset);
   } else {
@@ -377,7 +165,6 @@ int f_detect_string(lua_State *L) {
 		lua_pushstring(L, "could not detect the file encoding");
 		return 2;
   }
-
   return 1;
 }
 
@@ -423,53 +210,37 @@ int f_convert(lua_State *L) {
       strict = lua_toboolean(L, -1);
     }
   }
-
-  /* to strip the bom from the input text if any */
-  if (handle_from_bom) {
-    encoding_charset_from_bom(text, text_len, &bom_len);
-  }
-
-  size_t output_len = 0;
-  char* output = SDL_iconv_string_custom(
-    to, from, text+bom_len, text_len-bom_len, &output_len, strict
-  );
-
-  /* strip bom sometimes added when converting to utf-8, we don't need it */
-  if (output && strcmp(to, "UTF-8") == 0) {
-    encoding_charset_from_bom(output, output_len, &bom_len);
-    if (bom_len > 0) {
-      SDL_memmove(output,output+bom_len, output_len-bom_len);
-      output = SDL_realloc(output, output_len-bom_len);
-      output_len -= bom_len;
-    }
-  }
-
-  if (output != NULL && handle_to_bom) {
-    if (handle_to_bom) {
-      bom = encoding_bom_from_charset(to, &bom_len);
-      if (bom != NULL) {
-        output = SDL_realloc(output, output_len + bom_len);
-        SDL_memmove(output+bom_len, output, output_len);
-        SDL_memcpy(output, bom, bom_len);
-        output_len += bom_len;
-      }
-    }
-  } else if (!output) {
+  iconv_t conv = iconv_open(to, from);
+  if (conv == (iconv_t)-1) {
     lua_pushnil(L);
-    lua_pushfstring(L, "failed converting from '%s' to '%s'", from, to);
+    lua_pushstring(L, errstr(errno));
     return 2;
   }
-
-  lua_pushlstring(L, output, output_len);
-
-  SDL_free(output);
-
+  luaL_Buffer b;
+  luaL_buffinit(L, &b);
+  char buffer[4096];
+  const char* inbuf = text;
+  size_t inbytesleft = text_len;
+  while (inbytesleft > 0) {
+    size_t err = 0;
+    char* outbuf = buffer;
+    size_t outbytesleft = sizeof(buffer);
+    err = iconv(conv, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+    if (err == -1) {
+      iconv_close(conv);
+      lua_pushnil(L);
+      lua_pushstring(L, "illegal multibyte sequence");
+      return 2;
+    }
+    luaL_addlstring(L, buffer, outbuf - buffer);
+  }
+  luaL_pushresult(&b);
   return 1;
 }
 
 
 /*
- * encoding.get_charset_bom(charset)
+ * encoding.bom(charset)
  *
  * Retrieve the byte order marks sequence for the given charset if applicable.
  *
@@ -480,82 +251,17 @@ int f_convert(lua_State *L) {
  *  The bom sequence string or empty string if not applicable.
  */
 int f_get_charset_bom(lua_State *L) {
-  const char* charset = luaL_checkstring(L, 1);
-
   size_t bom_len = 0;
-  const unsigned char* bom = encoding_bom_from_charset(charset, &bom_len);
-
-  if (bom)
-    lua_pushlstring(L, (char*)bom, bom_len);
-  else
-    lua_pushstring(L, "");
-
-  return 1;
-}
-
-
-/*
- * encoding.strip_bom(text, charset)
- *
- * Remove the byte order marks from the given string.
- *
- * Arguments:
- *  text, a string that may contain a byte order marks to be removed.
- *  charset, optional charset to scan for, if empty scan all charsets with bom.
- *
- * Returns:
- *  The input text string with the byte order marks removed if found.
- */
-int f_strip_bom(lua_State* L) {
-  size_t text_len = 0;
-  const char* text = luaL_checklstring(L, 1, &text_len);
-  const char* charset = luaL_optstring(L, 2, NULL);
-  size_t bom_len = 0;
-
-  if (text_len <= 0) {
-    lua_pushstring(L, "");
-  } else {
-    if (charset) {
-      for (size_t i=0; bom_list[i].charset != NULL; i++) {
-        if (
-          strcmp(bom_list[i].charset, charset) == 0
-          &&
-          text_len >= bom_list[i].len
-        ) {
-          bool bom_found = true;
-          for (size_t b=0; b<bom_list[i].len; b++) {
-            if (bom_list[i].bom[b] != (unsigned char)text[b]) {
-              bom_found = false;
-              break;
-            }
-          }
-          if (bom_found) {
-            bom_len = bom_list[i].len;
-            break;
-          }
-        }
-      }
-    } else {
-      encoding_charset_from_bom(text, text_len, &bom_len);
-    }
-  }
-
-  if (bom_len > 0 && text_len-bom_len > 0) {
-    lua_pushlstring(L, text+bom_len, text_len-bom_len);
-  } else {
-    lua_pushlstring(L, text, text_len);
-  }
-
+  const char* bom = encoding_bom_from_charset(luaL_checkstring(L, 1), &bom_len);
+  lua_pushlstring(L, bom, bom_len);
   return 1;
 }
 
 
 static const luaL_Reg lib[] = {
   { "detect",          f_detect          },
-  { "detect_string",   f_detect_string   },
   { "convert",         f_convert         },
-  { "get_charset_bom", f_get_charset_bom },
-  { "strip_bom",       f_strip_bom       },
+  { "bom",             f_bom             },
   { NULL, NULL }
 };
 
@@ -572,8 +278,3 @@ int luaopen_lite_xl_encoding(lua_State *L, void* (*api_require)(char *)) {
 #endif
   return luaopen_encoding(L);
 }
-
-/* Fix link issue on windows */
-#if defined(_WIN32)
-int SDL_main(int argc, char *argv[]){ return 0; }
-#endif

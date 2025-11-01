@@ -4,12 +4,7 @@ This repository provides a **native** and **lua** plugin to extend lite-xl and
 provide the missing functionality to handle document encodings.
 
 ## Native
-Adds an API for automatic detection of files or strings encoding
-using [uchardet](https://gitlab.freedesktop.org/uchardet/uchardet).
-The api also exposes a customized `SDL_iconv_string()` to allow converting
-between different encodings and functions for byte order marks handling.
-
-You can view the API documention on the [docs](docs/encoding.lua) subdirectory.
+Adds an API for automatic detection of files or strings encoding using [libcharset].
 
 ## Lua
 Leverages the native plugin to add automatic conversion from non-UTF8 encodings
@@ -36,23 +31,15 @@ You will need to have meson and a working build environment for your operating
 system. Then, to build just execute the following commands:
 
 ```sh
-meson setup build
-meson compile -C build
+./build.sh
 ```
 
 ## Installation
 
-To install just copy the generated library file to your libraries directory:
+To install, we recommend simply using lpm:
 
-```sh
-cp build/encoding.so ~/.config/lite-xl/libraries/
 ```
-
-Then install the Lua plugin to take advantage of the native plugin and
-extend lite-xl encoding management capabilities:
-
-```sh
-cp plugins/encodings.lua ~/.config/lite-xl/plugins/
+lpm install encoding
 ```
 
 ## Lua plugins using the native encoding API:

@@ -171,12 +171,18 @@ end
 local old_doc_load = Doc.load
 function Doc:load(filename)
   old_doc_load(self, filename)
-  self.encoding = self.encoding or assert(encoding.detect(filename))
+  local bytes = ""
+  for i, line in ipairs(self.lines) do
+    if i > 1 then bytes = bytes .. "\r\n" end
+    bytes = bytes .. self.lines[i]:sub(1, 10)
+    if #bytes >= 10 then break end
+  end
+  self.encoding = self.encoding or assert(encoding.detect(bytes))
   if self.encoding ~= "UTF-8" then
     for i, line in ipairs(self.lines) do
       self.lines[i] = encoding.convert("UTF-8", self.encoding, self.lines[i], {
         strict = false,
-        handle_from_bom = i == 1 and true
+        handle_from_bom = i == 1
       })
     end
   end
