@@ -168,113 +168,36 @@ end
 --------------------------------------------------------------------------------
 -- Overwrite Doc methods to properly add encoding detection and conversion.
 --------------------------------------------------------------------------------
-function Doc:new(filename, abs_filename, new_file)
-  self.new_file = new_file
-  self.encoding = nil
-  self.convert = false
-  self:reset()
-  if filename then
-    self:set_filename(filename, abs_filename)
-    if not new_file then
-      self:load(filename)
-    end
-  end
-end
-
+local old_doc_load = Doc.load
 function Doc:load(filename)
-  if not self.encoding then
-    local errmsg
-    self.encoding, errmsg = encoding.detect(filename);
-    if not self.encoding then core.error("%s", errmsg) error(errmsg) end
-  end
-  self.convert = false
-  if self.encoding ~= "UTF-8" and self.encoding ~= "ASCII" then
-    self.convert = true
-  end
-  local fp = assert( io.open(filename, "rb") )
-  self:reset()
-  self.lines = {}
-  local i = 1
-  if self.convert then
-    local content = fp:read("*a");
-    content = assert(encoding.convert("UTF-8", self.encoding, content, {
-      strict = false,
-      handle_from_bom = true
-    }))
-    for line in content:gmatch("([^\n]*)\n?") do
-      if line:byte(-1) == 13 then
-        line = line:sub(1, -2)
-        self.crlf = true
-      end
-      table.insert(self.lines, line .. "\n")
-      self.highlighter.lines[i] = false
-      i = i + 1
-    end
-    content = nil
-  else
-    for line in fp:lines() do
-      if (i == 1) then line = encoding.strip_bom(line, "UTF-8") end
-      if line:byte(-1) == 13 then
-        line = line:sub(1, -2)
-        self.crlf = true
-      end
-      table.insert(self.lines, line .. "\n")
-      self.highlighter.lines[i] = false
-      i = i + 1
+  old_doc_load(self, filename)
+  self.encoding = self.encoding or assert(encoding.detect(filename))
+  if self.encoding ~= "UTF-8" then
+    for i, line in ipairs(self.lines) do
+      self.lines[i] = encoding.convert("UTF-8", self.encoding, self.lines[i], {
+        strict = false,
+        handle_from_bom = i == 1 and true
+      })
     end
   end
-  if #self.lines == 0 then
-    table.insert(self.lines, "\n")
-  end
-  fp:close()
   self:reset_syntax()
 end
 
-function Doc:save(filename, abs_filename)
-  if not filename then
-    assert(self.filename, "no filename set to default to")
-    filename = self.filename
-    abs_filename = self.abs_filename
-  else
-    assert(self.filename or abs_filename, "calling save on unnamed doc without absolute path")
-  end
-  local fp
-  local output = ""
-  if not self.convert then
-    fp = assert( io.open(filename, "wb") )
-    for _, line in ipairs(self.lines) do
-      if self.crlf then line = line:gsub("\n", "\r\n") end
-      fp:write(line)
-    end
-  else
-      output = table.concat(self.lines);
-      if self.crlf then output = output:gsub("\n", "\r\n") end
-  end
-  local conversion_error = false
-  if self.convert then
-    local errmsg
-    output, errmsg = encoding.convert(self.encoding, "UTF-8", output, {
+local old_doc_save = Doc.save
+function Doc:save(filename, abs_filename)  
+  if self.encoding == "UTF-8" then return old_doc_save(self, filename, abs_filename) end
+  local encoded_lines, old_lines = {}, doc.lines
+  for i, line in ipairs(self.lines) do
+    table.insert(encoded_lines, assert(encoding.convert(self.encoding, "UTF-8", content, {
       strict = true,
-      handle_to_bom = true
-    })
-    if output then
-      fp = assert( io.open(filename, "wb") )
-      fp:write(encoding.get_charset_bom(self.encoding) .. output)
-      fp:close()
-    else
-      conversion_error = true
-      core.error("%s", errmsg)
-    end
-  else
-    fp:close()
+      handle_to_bom = i == 1
+    })))
   end
-  self:set_filename(filename, abs_filename)
-  if not conversion_error then
-    self.new_file = false
-  else
-    self.new_file = true
-  end
-  self:clean()
+  self.lines = encoded_lines
+  local status, err = pcall(old_doc_save, self, filename, abs_filename)
+  self.lines = old_lines
+  if not status then error(err, 0) end
+  return err
 end
 
 --------------------------------------------------------------------------------
@@ -284,11 +207,6 @@ command.add("core.docview", {
   ["doc:change-encoding"] = function(dv)
     encodings.select_encoding("Select Output Encoding", function(charset)
       dv.doc.encoding = charset
-      if charset ~= "UTF-8" and charset ~= "ASCII" then
-        dv.doc.convert = true
-      else
-        dv.doc.convert = false
-      end
       dv.doc:save()
     end)
   end,
@@ -296,11 +214,6 @@ command.add("core.docview", {
   ["doc:reload-with-encoding"] = function(dv)
     encodings.select_encoding("Reload With Encoding", function(charset)
       dv.doc.encoding = charset
-      if charset ~= "UTF-8" and charset ~= "ASCII" then
-        dv.doc.convert = true
-      else
-        dv.doc.convert = false
-      end
       dv.doc:reload()
     end)
   end
