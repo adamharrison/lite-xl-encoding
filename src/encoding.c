@@ -1,6 +1,8 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <uchardet.h>
+#include <string.h>
+#include <iconv.h>
 
 #ifdef _WIN32
   #include <windows.h>
@@ -145,19 +147,20 @@ static const char* encoding_charset_from_bom(
  *  The charset string or nil
  *  The error message
  */
-int f_detect_string(lua_State *L) {
+int f_detect(lua_State *L) {
 	size_t string_len = 0;
-	const char* string = luaL_checklstring(L, 1);
-  if (string_len == 0) 
-		return "UTF-8";
+	const char* string = luaL_checklstring(L, 1, &string_len);
   static char charset[30] = {0};
-  size_t bom_len = 0;
-  const char* bom_charset = encoding_charset_from_bom(string, string_len, &bom_len);
-  uchardet_t ud = uchardet_new();
-  uchardet_handle_data(ud, buffer, string_len);
-  uchardet_data_end(ud);
-  const char* charset = uchardet_get_charset(ud);
-  uchardet_delete(ud);
+  if (string_len > 0) {
+    size_t bom_len = 0;
+    const char* bom_charset = encoding_charset_from_bom(string, string_len, &bom_len);
+    uchardet_t ud = uchardet_new();
+    uchardet_handle_data(ud, string, string_len);
+    uchardet_data_end(ud);
+    const char* charset = uchardet_get_charset(ud);
+    uchardet_delete(ud);
+  } else
+		strcpy(charset, "UTF-8");
   if (charset) {
     lua_pushstring(L, charset);
   } else {
@@ -213,13 +216,13 @@ int f_convert(lua_State *L) {
   iconv_t conv = iconv_open(to, from);
   if (conv == (iconv_t)-1) {
     lua_pushnil(L);
-    lua_pushstring(L, errstr(errno));
+    lua_pushstring(L, strerror(errno));
     return 2;
   }
   luaL_Buffer b;
   luaL_buffinit(L, &b);
   char buffer[4096];
-  const char* inbuf = text;
+  char* inbuf = (char*)text;
   size_t inbytesleft = text_len;
   while (inbytesleft > 0) {
     size_t err = 0;
@@ -232,7 +235,7 @@ int f_convert(lua_State *L) {
       lua_pushstring(L, "illegal multibyte sequence");
       return 2;
     }
-    luaL_addlstring(L, buffer, outbuf - buffer);
+    luaL_addlstring(&b, buffer, outbuf - buffer);
   }
   luaL_pushresult(&b);
   return 1;
@@ -250,7 +253,7 @@ int f_convert(lua_State *L) {
  * Returns:
  *  The bom sequence string or empty string if not applicable.
  */
-int f_get_charset_bom(lua_State *L) {
+int f_bom(lua_State *L) {
   size_t bom_len = 0;
   const char* bom = encoding_bom_from_charset(luaL_checkstring(L, 1), &bom_len);
   lua_pushlstring(L, bom, bom_len);
@@ -259,9 +262,9 @@ int f_get_charset_bom(lua_State *L) {
 
 
 static const luaL_Reg lib[] = {
-  { "detect",          f_detect          },
-  { "convert",         f_convert         },
-  { "bom",             f_bom             },
+  { "detect",  f_detect  },
+  { "convert", f_convert },
+  { "bom",     f_bom     },
   { NULL, NULL }
 };
 
