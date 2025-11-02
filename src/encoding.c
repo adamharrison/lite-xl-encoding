@@ -75,7 +75,7 @@ static const unsigned char utf8d[] = {
 };
 
 int utf8_validate(const char *str, size_t len) {
-  int state;
+  int state = UTF8_ACCEPT;
   for (size_t i = 0; i < len; i++) {
         // We don't care about the codepoint, so this is
         // a simplified version of the decode function.
