@@ -63,7 +63,7 @@ jobs:
       with: { name: "MacOS", path: "*.so" }
         
   finalize:
-    needs: [version, build_macos, build_windows, build_linux]
+    needs: [version, build_macos, build_linux_windows]
     runs-on: ubuntu-latest
     environment: Release
     steps:
