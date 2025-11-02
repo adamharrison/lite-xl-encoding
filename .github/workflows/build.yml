@@ -3,21 +3,6 @@ on: { push: { branches: [master] } }
 permissions:
   contents: write
 jobs:
-  version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.setup_release.outputs.version }}
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with: { fetch-depth: 0 }
-    - name: Setup Release
-      id: setup_release
-      env: { GITHUB_TOKEN: "${{ github.token }}" }
-      run: |
-        wget https://github.com/lite-xl/lite-xl-plugin-manager/releases/download/latest/lpm.x86_64-linux -O lpm-latest && chmod +x lpm-latest
-        echo "version=`./lpm-latest gh version`" >> $GITHUB_OUTPUT
-          
   build_linux_windows:
     runs-on: ubuntu-latest
     defaults: { run: { shell: bash } }
@@ -30,16 +15,15 @@ jobs:
     - name: Build Libraries
       run: |
         git config --global user.name "Github Actions" && git config --global user.email "adamdharrison@gmail.com"
-        sudo apt-get install -y gcc gcc-multilib g++ mingw-w64 && mkdir bin
+        sudo apt-get install -y cmake gcc gcc-multilib g++ mingw-w64
         ./build.sh clean && BIN="encoding.x86_64-linux.so" ./build.sh &&
-        ./build.sh clean && BIN="encoding.x86-linux.so" CFLAGS="-m32" ./build.sh &&
         ./build.sh clean && BIN="encoding.x86_64-windows.dll" CXX=x86_64-w64-mingw32-g++ CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-gcc-ar WINDRES=x86_64-w64-mingw32-windres \
           CMAKE_FLAGS="-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=NEVER -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_INCLUDE_PATH=/usr/share/mingw-w64/include" \
           CONFIGURE_FLAGS="--host x86_64-linux" ./build.sh
-    - name: Upload Artifacts
+    - name: Upload Windows Artifacts
       uses: actions/upload-artifact@v4
       with: { name: "Windows", path: "*.dll" }
-    - name: Upload Artifacts
+    - name: Upload Linux Artifacts
       uses: actions/upload-artifact@v4
       with: { name: "Linux", path: "*.so" }
 
@@ -56,14 +40,14 @@ jobs:
     - name: Build MacOS
       env: { GITHUB_TOKEN: "${{ github.token }}" }
       run: |
-        ./build.sh clean && BIN="encoding.x86_64-darwin.so" CFLAGS="-arch x86_64" ./build.sh
         ./build.sh clean && BIN="encoding.aarch64-darwin.so" ./build.sh
+        ./build.sh clean && BIN="encoding.x86_64-darwin.so" CFLAGS="-arch x86_64" LDFLAGS="-arch x86_64" CMAKE_FLAGS="-DCMAKE_OSX_ARCHITECTURES=x86_64" ./build.sh
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with: { name: "MacOS", path: "*.so" }
         
   finalize:
-    needs: [version, build_macos, build_linux_windows]
+    needs: [build_macos, build_linux_windows]
     runs-on: ubuntu-latest
     environment: Release
     steps:

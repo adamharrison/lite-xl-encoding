@@ -19,7 +19,7 @@ fi
 
 # Build supporting libraries if we don't explicitly link them in some way.
 if [[ "$@" != "-luchardet" ]]; then
-  [ ! -e "lib/uchardet/build" ] && cd lib/uchardet && mkdir build && cd build &&  cmake .. $CMAKE_FLAGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=`pwd`/../../prefix && $MAKE && $MAKE install && cd ../../../
+  [ ! -e "lib/uchardet/build" ] && cd lib/uchardet && mkdir build && cd build &&  cmake .. $CMAKE_FLAGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=`pwd`/../../prefix && $MAKE && $MAKE install && cd ../../../
   LINK_FLAGS="$LINK_FLAGS -luchardet -lstdc++"
 fi
 if [[ "$@" != "-liconv" ]]; then
