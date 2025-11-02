@@ -1,9 +1,9 @@
 [submodule "lib/lite-xl"]
 	path = lib/lite-xl
 	url = https://github.com/lite-xl/lite-xl.git
-[submodule "lib/libiconv"]
-	path = lib/libiconv
-	url = https://git.savannah.gnu.org/git/libiconv.git
 [submodule "lib/uchardet"]
 	path = lib/uchardet
 	url = https://gitlab.freedesktop.org/uchardet/uchardet.git
+[submodule "lib/libiconv"]
+	path = lib/libiconv
+	url = https://github.com/adamharrison/libiconv.git

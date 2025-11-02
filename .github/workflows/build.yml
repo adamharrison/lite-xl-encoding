@@ -1,5 +1,7 @@
 name: CI
 on: { push: { branches: [master] } }
+env:
+  LPM_PLUGINS: https://raw.githubusercontent.com/adamharrison/lite-xl-maintenance/latest/lpm-plugins/gh.lua
 permissions:
   contents: write
 jobs:
@@ -40,8 +42,8 @@ jobs:
     - name: Build MacOS
       env: { GITHUB_TOKEN: "${{ github.token }}" }
       run: |
-        ./build.sh clean && BIN="encoding.aarch64-darwin.so" ./build.sh
-        ./build.sh clean && BIN="encoding.x86_64-darwin.so" CFLAGS="-arch x86_64" LDFLAGS="-arch x86_64" CMAKE_FLAGS="-DCMAKE_OSX_ARCHITECTURES=x86_64" ./build.sh
+        ./build.sh clean && BIN="encoding.aarch64-darwin.so" ./build.sh -liconv
+        ./build.sh clean && BIN="encoding.x86_64-darwin.so" CFLAGS="-arch x86_64" LDFLAGS="-arch x86_64" CMAKE_FLAGS="-DCMAKE_OSX_ARCHITECTURES=x86_64" ./build.sh -liconv
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with: { name: "MacOS", path: "*.so" }
@@ -61,5 +63,5 @@ jobs:
       env: { GITHUB_TOKEN: "${{ github.token }}" }
       run: |
         wget https://github.com/lite-xl/lite-xl-plugin-manager/releases/download/latest/lpm.x86_64-linux -O lpm-latest && chmod +x lpm-latest
-        ./lpm-latest gh release Linux/*.so MacOS/*.so Windows/*.dll
+        ./lpm-latest gh release Linux/*.so MacOS/*.so Windows/*.dll --addon encoding
 
