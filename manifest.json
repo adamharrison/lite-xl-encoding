@@ -1,52 +1,54 @@
 {
   "addons": [
     {
-      "id": "encoding",
-      "version": "1.1",
-      "type": "library",
       "description": "Support library that exposes character detection and conversion capabilities.",
-      "mod_version": "3",
       "files": [
         {
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-linux.so",
           "arch": "x86_64-linux",
+          "checksum": "SKIP",
           "path": "encoding.x86_64-linux.so",
-          "checksum": "SKIP"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-linux.so"
         },
         {
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-darwin.so",
           "arch": "x86_64-darwin",
+          "checksum": "SKIP",
           "path": "encoding.x86_64-darwin.so",
-          "checksum": "SKIP"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-darwin.so"
         },
         {
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.aarch64-darwin.so",
           "arch": "aarch64-darwin",
+          "checksum": "SKIP",
           "path": "encoding.aarch64-darwin.so",
-          "checksum": "SKIP"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.aarch64-darwin.so"
         },
         {
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-windows.dll",
           "arch": "x86_64-windows",
+          "checksum": "SKIP",
           "path": "encoding.x86_64-windows.dll",
-          "checksum": "SKIP"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-windows.dll"
         },
         {
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86-windows.dll",
           "arch": "x86-windows",
+          "checksum": "SKIP",
           "path": "encoding.x86-windows.dll",
-          "checksum": "SKIP"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.1/encoding.x86-windows.dll"
         }
-      ]
+      ],
+      "id": "encoding",
+      "mod_version": "3",
+      "type": "library",
+      "version": "1.2"
     },
     {
-      "id": "encodings",
-      "name": "Encodings",
-      "version": "1.0",
+      "dependencies": {
+        "encoding": {}
+      },
       "description": "Properly read files that are not encoded in UTF-8 by auto-detecting their encoding and allows saving on different text encodings.",
+      "id": "encodings",
       "mod_version": "3",
+      "name": "Encodings",
       "path": "plugins/encodings.lua",
-      "dependencies": { "encoding": { } }
+      "version": "1.0"
     }
   ]
 }
