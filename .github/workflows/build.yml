@@ -30,7 +30,7 @@ jobs:
     - name: Build Libraries
       run: |
         git config --global user.name "Github Actions" && git config --global user.email "adamdharrison@gmail.com"
-        sudo apt-get install -y gcc-multilib mingw-w64 && mkdir bin
+        sudo apt-get install -y gcc gcc-multilib g++ mingw-w64 && mkdir bin
         ./build.sh clean && BIN="encoding.x86_64-linux.so" ./build.sh &&
         ./build.sh clean && BIN="encoding.x86-linux.so" CFLAGS="-m32" ./build.sh &&
         ./build.sh clean && BIN="encoding.x86_64-windows.dll" CXX=x86_64-w64-mingw32-g++ CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-gcc-ar WINDRES=x86_64-w64-mingw32-windres \
