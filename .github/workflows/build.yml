@@ -36,13 +36,6 @@ jobs:
         ./build.sh clean && BIN="encoding.x86_64-windows.dll" CXX=x86_64-w64-mingw32-g++ CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-gcc-ar WINDRES=x86_64-w64-mingw32-windres \
           CMAKE_FLAGS="-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=NEVER -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_INCLUDE_PATH=/usr/share/mingw-w64/include" \
           CONFIGURE_FLAGS="--host x86_64-linux" ./build.sh
-        if [[ `git tag --points-at HEAD | head -c 1` == "v" ]]; then
-          export VERSION=`git describe --tags --abbrev=0 --match "v*" | tail -c +2`
-          gh release delete -y v$VERSION || true;
-          gh release create -t v$VERSION v$VERSION bin/*.so bin/*.dll
-          gh release delete -y latest || true;
-          gh release create -t latest latest bin/*.so bin/*.dll
-        fi
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with: { name: "Windows", path: "*.dll" }
