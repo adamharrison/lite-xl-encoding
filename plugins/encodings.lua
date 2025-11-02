@@ -172,18 +172,16 @@ local old_doc_load = Doc.load
 function Doc:load(filename)
   old_doc_load(self, filename)
   local bytes = ""
+  local CHUNK_SIZE = 2048
   for i, line in ipairs(self.lines) do
     if i > 1 then bytes = bytes .. "\r\n" end
-    bytes = bytes .. self.lines[i]:sub(1, 10)
-    if #bytes >= 10 then break end
+    bytes = bytes .. self.lines[i]:sub(1, CHUNK_SIZE)
+    if #bytes >= CHUNK_SIZE then break end
   end
-  self.encoding = self.encoding or assert(encoding.detect(bytes))
+  if not self.encoding then self.encoding, self.bom = assert(encoding.detect(bytes)) end
   if self.encoding ~= "UTF-8" then
     for i, line in ipairs(self.lines) do
-      self.lines[i] = encoding.convert("UTF-8", self.encoding, self.lines[i], {
-        strict = false,
-        handle_from_bom = i == 1
-      })
+      self.lines[i] = encoding.convert("UTF-8", self.encoding, self.lines[i])
     end
   end
   self:reset_syntax()
@@ -194,10 +192,7 @@ function Doc:save(filename, abs_filename)
   if self.encoding == "UTF-8" then return old_doc_save(self, filename, abs_filename) end
   local encoded_lines, old_lines = {}, doc.lines
   for i, line in ipairs(self.lines) do
-    table.insert(encoded_lines, assert(encoding.convert(self.encoding, "UTF-8", content, {
-      strict = true,
-      handle_to_bom = i == 1
-    })))
+    table.insert(encoded_lines, assert(encoding.convert(self.encoding, "UTF-8", content, { strict = true })))
   end
   self.lines = encoded_lines
   local status, err = pcall(old_doc_save, self, filename, abs_filename)

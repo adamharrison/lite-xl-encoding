@@ -8,11 +8,12 @@
   #include <windows.h>
 #endif
 
-#ifdef USE_LUA
+#ifdef ENCODING_STANDLONE
   #include <lua.h>
   #include <lauxlib.h>
   #include <lualib.h>
 #else
+  #define LITE_XL_PLUGIN_ENTRYPOINT
   #include <lite_xl_plugin_api.h>
 #endif
 
@@ -56,7 +57,7 @@ static bom_t bom_list[] = {
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
 
-static const uint8_t utf8d[] = {
+static const unsigned char utf8d[] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 00..1f
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 20..3f
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 40..5f
@@ -73,21 +74,17 @@ static const uint8_t utf8d[] = {
   1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
 };
 
-uint32_t utf8_validate(uint32_t *state, const char *str, size_t len) {
-   size_t i;
-   uint32_t type;
-
-    for (i = 0; i < len; i++) {
+int utf8_validate(const char *str, size_t len) {
+  int state;
+  for (size_t i = 0; i < len; i++) {
         // We don't care about the codepoint, so this is
         // a simplified version of the decode function.
-        type = utf8d[(uint8_t)str[i]];
-        *state = utf8d[256 + (*state) * 16 + type];
-
-        if (*state == UTF8_REJECT)
-            break;
+        int type = utf8d[(int)str[i]];
+        state = utf8d[256 + (state) * 16 + type];
+        if (state == UTF8_REJECT)
+            return 0;
     }
-
-    return *state;
+    return 1;
 }
 /*************************End of UTF-8 Validation Code*************************/
 
@@ -100,8 +97,7 @@ static const char* encoding_bom_from_charset(const char* charset, size_t* len) {
       return bom_list[i].bom;
     }
   }
-  if (len) 
-    *len = 0;
+  if (len) *len = 0;
   return "";
 }
 
@@ -127,10 +123,7 @@ static const char* encoding_charset_from_bom(
       }
     }
   }
-
-  if (bom_len)
-      *bom_len = 0;
-
+  if (bom_len) *bom_len = 0;
   return NULL;
 }
 
@@ -145,30 +138,41 @@ static const char* encoding_charset_from_bom(
  *
  * Returns:
  *  The charset string or nil
- *  The error message
+ *  Whether a BOM was present, or the error message
  */
 int f_detect(lua_State *L) {
 	size_t string_len = 0;
 	const char* string = luaL_checklstring(L, 1, &string_len);
-  static char charset[30] = {0};
   if (string_len > 0) {
     size_t bom_len = 0;
     const char* bom_charset = encoding_charset_from_bom(string, string_len, &bom_len);
-    uchardet_t ud = uchardet_new();
-    uchardet_handle_data(ud, string, string_len);
-    uchardet_data_end(ud);
-    const char* charset = uchardet_get_charset(ud);
-    uchardet_delete(ud);
-  } else
-		strcpy(charset, "UTF-8");
-  if (charset) {
-    lua_pushstring(L, charset);
+    if (bom_charset) {
+      lua_pushstring(L, bom_charset);
+      lua_pushboolean(L, 1);
+    } else if (utf8_validate(string, string_len)) {
+      lua_pushstring(L, "UTF-8");
+      lua_pushboolean(L, 0);
+    } else {
+      uchardet_t ud = uchardet_new();
+      const char* detected_charset = NULL;
+      if (uchardet_handle_data(ud, string, string_len) == 0) {
+        uchardet_data_end(ud);
+        detected_charset = uchardet_get_charset(ud);
+      }
+      if (detected_charset && *detected_charset) {
+        lua_pushstring(L, detected_charset);
+        lua_pushboolean(L, 0);
+      } else {
+        lua_pushnil(L);
+        lua_pushstring(L, "could not detect the file encoding");
+      }
+      uchardet_delete(ud); 
+    }
   } else {
-    lua_pushnil(L);
-		lua_pushstring(L, "could not detect the file encoding");
-		return 2;
+    lua_pushstring(L, "UTF-8");
+    lua_pushboolean(L, 0);
   }
-  return 1;
+  return 2;
 }
 
 
@@ -194,24 +198,13 @@ int f_convert(lua_State *L) {
   const char* text = luaL_checklstring(L, 3, &text_len);
   /* conversion options */
   bool strict = false;
-  bool handle_to_bom = false;
-  bool handle_from_bom = false;
   const unsigned char* bom;
   size_t bom_len = 0;
 
   if (lua_gettop(L) > 3 && lua_istable(L, 4)) {
-    lua_getfield(L, 4, "handle_to_bom");
-    if (lua_isboolean(L, -1)) {
-      handle_to_bom = lua_toboolean(L, -1);
-    }
-    lua_getfield(L, 4, "handle_from_bom");
-    if (lua_isboolean(L, -1)) {
-      handle_from_bom = lua_toboolean(L, -1);
-    }
     lua_getfield(L, 4, "strict");
-    if (lua_isboolean(L, -1)) {
+    if (lua_isboolean(L, -1)) 
       strict = lua_toboolean(L, -1);
-    }
   }
   iconv_t conv = iconv_open(to, from);
   if (conv == (iconv_t)-1) {
@@ -222,7 +215,7 @@ int f_convert(lua_State *L) {
   luaL_Buffer b;
   luaL_buffinit(L, &b);
   char buffer[4096];
-  char* inbuf = (char*)text;
+  const char* inbuf = (char*)text;
   size_t inbytesleft = text_len;
   while (inbytesleft > 0) {
     size_t err = 0;
@@ -230,10 +223,15 @@ int f_convert(lua_State *L) {
     size_t outbytesleft = sizeof(buffer);
     err = iconv(conv, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
     if (err == -1) {
-      iconv_close(conv);
-      lua_pushnil(L);
-      lua_pushstring(L, "illegal multibyte sequence");
-      return 2;
+      if (strict) {
+        iconv_close(conv);
+        lua_pushnil(L);
+        lua_pushstring(L, "illegal multibyte sequence");
+        return 2;
+      } else {
+        ++inbuf;
+        --inbytesleft;
+      }
     }
     luaL_addlstring(&b, buffer, outbuf - buffer);
   }
@@ -269,15 +267,8 @@ static const luaL_Reg lib[] = {
 };
 
 
-int luaopen_encoding(lua_State *L) {
+int luaopen_lite_xl_encoding(lua_State *L, void* (*api_require)(char *)) {
+  lite_xl_plugin_init(api_require);
   luaL_newlib(L, lib);
   return 1;
-}
-
-/* Called by lite-xl f_load_native_plugin on `require "encoding"` */
-int luaopen_lite_xl_encoding(lua_State *L, void* (*api_require)(char *)) {
-#ifndef USE_LUA
-  lite_xl_plugin_init(api_require);
-#endif
-  return luaopen_encoding(L);
 }

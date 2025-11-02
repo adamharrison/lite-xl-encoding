@@ -27,12 +27,25 @@ UTF-8 or ASCII which isn't possible right now on Lite XL.
 
 ## Building
 
-You will need to have meson and a working build environment for your operating
-system. Then, to build just execute the following commands:
+You will need `cmake`, and a working build environment for your operating
+system. (MSYS on windows). Then, to build just execute the following commands:
 
 ```sh
 ./build.sh
 ```
+
+### Cross Compiling
+
+If you would like you cross compile, you may specify the following:
+
+#### Linux -> Windows
+
+```
+./build.sh clean && BIN=libencoding.dll CXX=x86_64-w64-mingw32-g++ CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-gcc-ar WINDRES=x86_64-w64-mingw32-windres \
+  CMAKE_FLAGS="-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=NEVER -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_INCLUDE_PATH=/usr/share/mingw-w64/include" \
+  CONFIGURE_FLAGS="--host x86_64-linux" ./build.sh
+```
+
 
 ## Installation
 

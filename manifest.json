@@ -4,37 +4,37 @@
       "id": "encoding",
       "version": "1.1",
       "type": "library",
-      "description": "Add support for detecting file and string encodings as converting between them.",
+      "description": "Support library that exposes character detection and conversion capabilities.",
       "mod_version": "3",
       "files": [
         {
           "url": "https://github.com/jgmdev/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-linux.so",
           "arch": "x86_64-linux",
-          "path": "init.x86_64-linux.so",
+          "path": "encoding.x86_64-linux.so",
           "checksum": "SKIP"
         },
         {
           "url": "https://github.com/jgmdev/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-darwin.so",
           "arch": "x86_64-darwin",
-          "path": "init.x86_64-darwin.so",
+          "path": "encoding.x86_64-darwin.so",
           "checksum": "SKIP"
         },
         {
           "url": "https://github.com/jgmdev/lite-xl-encoding/releases/download/v1.1/encoding.aarch64-darwin.so",
           "arch": "aarch64-darwin",
-          "path": "init.aarch64-darwin.so",
+          "path": "encoding.aarch64-darwin.so",
           "checksum": "SKIP"
         },
         {
           "url": "https://github.com/jgmdev/lite-xl-encoding/releases/download/v1.1/encoding.x86_64-windows.dll",
           "arch": "x86_64-windows",
-          "path": "init.x86_64-windows.dll",
+          "path": "encoding.x86_64-windows.dll",
           "checksum": "SKIP"
         },
         {
           "url": "https://github.com/jgmdev/lite-xl-encoding/releases/download/v1.1/encoding.x86-windows.dll",
           "arch": "x86-windows",
-          "path": "init.x86-windows.dll",
+          "path": "encoding.x86-windows.dll",
           "checksum": "SKIP"
         }
       ]
@@ -43,7 +43,7 @@
       "id": "encodings",
       "name": "Encodings",
       "version": "1.0",
-      "description": "Properly read files that are not encoded in UTF-8 or ASCII by auto-detecting their encoding and allows saving on different text encodings.",
+      "description": "Properly read files that are not encoded in UTF-8 by auto-detecting their encoding and allows saving on different text encodings.",
       "mod_version": "3",
       "path": "plugins/encodings.lua",
       "dependencies": { "encoding": { } }

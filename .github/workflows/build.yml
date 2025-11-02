@@ -1,0 +1,88 @@
+name: CI
+on: { push: { branches: [master] } }
+permissions:
+  contents: write
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.setup_release.outputs.version }}
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with: { fetch-depth: 0 }
+    - name: Setup Release
+      id: setup_release
+      env: { GITHUB_TOKEN: "${{ github.token }}" }
+      run: |
+        wget https://github.com/lite-xl/lite-xl-plugin-manager/releases/download/latest/lpm.x86_64-linux -O lpm-latest && chmod +x lpm-latest
+        echo "version=`./lpm-latest gh version`" >> $GITHUB_OUTPUT
+          
+  build_linux_windows:
+    runs-on: ubuntu-latest
+    defaults: { run: { shell: bash } }
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with: { fetch-depth: 0 }
+    - name: Clone Submodules
+      run: git submodule update --init --depth=1
+    - name: Build Libraries
+      run: |
+        git config --global user.name "Github Actions" && git config --global user.email "adamdharrison@gmail.com"
+        sudo apt-get install -y gcc-multilib mingw-w64 && mkdir bin
+        ./build.sh clean && BIN="encoding.x86_64-linux.so" ./build.sh &&
+        ./build.sh clean && BIN="encoding.x86-linux.so" CFLAGS="-m32" ./build.sh &&
+        ./build.sh clean && BIN="encoding.x86_64-windows.dll" CXX=x86_64-w64-mingw32-g++ CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-gcc-ar WINDRES=x86_64-w64-mingw32-windres \
+          CMAKE_FLAGS="-DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=NEVER -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=NEVER -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_INCLUDE_PATH=/usr/share/mingw-w64/include" \
+          CONFIGURE_FLAGS="--host x86_64-linux" ./build.sh
+        if [[ `git tag --points-at HEAD | head -c 1` == "v" ]]; then
+          export VERSION=`git describe --tags --abbrev=0 --match "v*" | tail -c +2`
+          gh release delete -y v$VERSION || true;
+          gh release create -t v$VERSION v$VERSION bin/*.so bin/*.dll
+          gh release delete -y latest || true;
+          gh release create -t latest latest bin/*.so bin/*.dll
+        fi
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with: { name: "Windows", path: "*.dll" }
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with: { name: "Linux", path: "*.so" }
+
+  build_macos:
+    runs-on: macos-latest
+    env:
+      CC: clang
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with: { fetch-depth: 0 }
+    - name: Clone Submodules
+      run: git submodule update --init --depth=1
+    - name: Build MacOS
+      env: { GITHUB_TOKEN: "${{ github.token }}" }
+      run: |
+        ./build.sh clean && BIN="encoding.x86_64-darwin.so" CFLAGS="-arch x86_64" ./build.sh
+        ./build.sh clean && BIN="encoding.aarch64-darwin.so" ./build.sh
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with: { name: "MacOS", path: "*.so" }
+        
+  finalize:
+    needs: [version, build_macos, build_windows, build_linux]
+    runs-on: ubuntu-latest
+    environment: Release
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with: { fetch-depth: 0 }
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with: { path: "." }
+    - name: Perform Release
+      env: { GITHUB_TOKEN: "${{ github.token }}" }
+      run: |
+        wget https://github.com/lite-xl/lite-xl-plugin-manager/releases/download/latest/lpm.x86_64-linux -O lpm-latest && chmod +x lpm-latest
+        ./lpm-latest gh release Linux/*.so MacOS/*.so Windows/*.dll
+
