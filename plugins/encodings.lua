@@ -184,16 +184,17 @@ function Doc:load(filename)
       self.lines[i] = encoding.convert("UTF-8", self.encoding, self.lines[i])
     end
   end
+  if self.bom then self.lines[1] = self.lines[1]:sub(#encoding.bom(self.encoding) + 1) end
   self:reset_syntax()
 end
 
 local old_doc_save = Doc.save
 function Doc:save(filename, abs_filename)  
-  if self.encoding == "UTF-8" then return old_doc_save(self, filename, abs_filename) end
-  local encoded_lines, old_lines = {}, doc.lines
+  local encoded_lines, old_lines = {}, self.lines
   for i, line in ipairs(self.lines) do
-    table.insert(encoded_lines, assert(encoding.convert(self.encoding, "UTF-8", content, { strict = true })))
+    table.insert(encoded_lines, self.encoding ~= "UTF-8" and assert(encoding.convert(self.encoding, "UTF-8", content, { strict = true })) or line)
   end
+  if self.bom then encoded_lines[1] = encoding.bom(self.encoding) .. encoded_lines[1] end
   self.lines = encoded_lines
   local status, err = pcall(old_doc_save, self, filename, abs_filename)
   self.lines = old_lines
