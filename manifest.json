@@ -29,7 +29,6 @@
         },
       ],
       "id": "encoding",
-      "mod_version": "3",
       "type": "library",
       "version": "1.2"
     },
@@ -39,7 +38,7 @@
       },
       "description": "Properly read files that are not encoded in UTF-8 by auto-detecting their encoding and allows saving on different text encodings.",
       "id": "encodings",
-      "mod_version": "3",
+      "mod_version": "4",
       "name": "Encodings",
       "path": "plugins/encodings.lua",
       "version": "1.0"
