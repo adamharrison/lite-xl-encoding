@@ -7,30 +7,30 @@
           "arch": "x86_64-linux",
           "checksum": "989590b72c116c242d539b833eee77908925a6fde3e03afe1d56748333322f3d",
           "path": "init.x86_64-linux.so",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.x86_64-linux.so"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.2/encoding.x86_64-linux.so"
         },
         {
           "arch": "x86_64-darwin",
           "checksum": "a6d731c5270c9deb2c74bace6043c0e2efd5d212589d14845f5243218c608194",
           "path": "init.x86_64-darwin.so",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.x86_64-darwin.so"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.2/encoding.x86_64-darwin.so"
         },
         {
           "arch": "aarch64-darwin",
           "checksum": "2ff1e8265c0a04bcc028e5f0c1e28fa319c781a72def192eef9978231b987075",
           "path": "init.aarch64-darwin.so",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.aarch64-darwin.so"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.2/encoding.aarch64-darwin.so"
         },
         {
           "arch": "x86_64-windows",
-          "checksum": "2ba1f5f0de145787000055113b9e8184db871247fdb262a9bdba7238b01c921a",
+          "checksum": "2efda09598f5e3e494519ec3b0bf9c9d3c2c949287b4e52ea1b2ddabc5f57891",
           "path": "init.x86_64-windows.dll",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.x86_64-windows.dll"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.2/encoding.x86_64-windows.dll"
         }
       ],
       "id": "encoding",
       "type": "library",
-      "version": "1.3"
+      "version": "1.2"
     },
     {
       "dependencies": {
