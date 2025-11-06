@@ -168,11 +168,6 @@ end
 --------------------------------------------------------------------------------
 -- Overwrite Doc methods to properly add encoding detection and conversion.
 --------------------------------------------------------------------------------
-local old_doc_new = Doc.new
-function Doc:new(...)
-  old_doc_new(self, ...)
-  self.encoding = "UTF-8"
-end
 
 local old_doc_load = Doc.load
 function Doc:load(filename)
@@ -198,7 +193,7 @@ local old_doc_save = Doc.save
 function Doc:save(filename, abs_filename)  
   local encoded_lines, old_lines = {}, self.lines
   for i, line in ipairs(self.lines) do
-    table.insert(encoded_lines, self.encoding ~= "UTF-8" and assert(encoding.convert(self.encoding, "UTF-8", line, { strict = true })) or line)
+    table.insert(encoded_lines, self.encoding and self.encoding ~= "UTF-8" and assert(encoding.convert(self.encoding, "UTF-8", line, { strict = true })) or line)
   end
   if self.bom then encoded_lines[1] = encoding.bom(self.encoding) .. encoded_lines[1] end
   self.lines = encoded_lines
@@ -240,7 +235,7 @@ core.status_view:add_item({
   get_item = function()
     local dv = core.active_view
     return {
-      style.text, dv.doc.encoding or "none"
+      style.text, dv.doc.encoding or "UTF-8"
     }
   end,
   command = function(button)
