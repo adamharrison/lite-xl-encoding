@@ -168,6 +168,12 @@ end
 --------------------------------------------------------------------------------
 -- Overwrite Doc methods to properly add encoding detection and conversion.
 --------------------------------------------------------------------------------
+local old_doc_new = Doc.new
+function Doc:new()
+  old_doc_new(self)
+  self.encoding = "UTF-8"
+end
+
 local old_doc_load = Doc.load
 function Doc:load(filename)
   old_doc_load(self, filename)
