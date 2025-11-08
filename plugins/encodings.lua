@@ -173,13 +173,19 @@ local old_doc_load = Doc.load
 function Doc:load(filename)
   old_doc_load(self, filename)
   local bytes = ""
-  local CHUNK_SIZE = 2048
+  local CHUNK_SIZE = 100*1024
   for i, line in ipairs(self.lines) do
     if i > 1 then bytes = bytes .. "\r\n" end
     bytes = bytes .. self.lines[i]:sub(1, CHUNK_SIZE)
     if #bytes >= CHUNK_SIZE then break end
   end
-  if not self.encoding then self.encoding, self.bom = assert(encoding.detect(bytes)) end
+  if not self.encoding then 
+    self.encoding, self.bom = encoding.detect(bytes)
+    if not self.encoding then 
+      core.warn("%s for %s; defaulting to ISO-8859-1", self.bom, filename)
+      self.encoding, self.bom = "ISO-8859-1", false 
+    end
+  end
   if self.encoding ~= "UTF-8" then
     for i, line in ipairs(self.lines) do
       self.lines[i] = encoding.convert("UTF-8", self.encoding, self.lines[i])
