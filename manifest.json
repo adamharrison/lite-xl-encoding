@@ -5,32 +5,32 @@
       "files": [
         {
           "arch": "x86_64-linux",
-          "checksum": "020a6d6dc9bbe319cca356ad30f6937b493fba7d1c018e96bee5be1173481714",
+          "checksum": "0374029c0aaec404e044674aaa855bf057a532d78a0cf8dde4b648685701a27e",
           "path": "init.x86_64-linux.so",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.x86_64-linux.so"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.4/encoding.x86_64-linux.so"
         },
         {
           "arch": "x86_64-darwin",
-          "checksum": "a6d731c5270c9deb2c74bace6043c0e2efd5d212589d14845f5243218c608194",
+          "checksum": "0babd7221bb64b0f1f131e141a4022ff26f8761ec2f5b7979b94a61ffe8e5cd4",
           "path": "init.x86_64-darwin.so",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.x86_64-darwin.so"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.4/encoding.x86_64-darwin.so"
         },
         {
           "arch": "aarch64-darwin",
-          "checksum": "2ff1e8265c0a04bcc028e5f0c1e28fa319c781a72def192eef9978231b987075",
+          "checksum": "3dbac436ab3b949f9337b819c24874126d6de1a69a150d0a82cb55dc1dbef74c",
           "path": "init.aarch64-darwin.so",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.aarch64-darwin.so"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.4/encoding.aarch64-darwin.so"
         },
         {
           "arch": "x86_64-windows",
-          "checksum": "9ca2bd5bcb58060caf7e9422cb8ef45edbdb6218262c8a33efde71392e44321a",
+          "checksum": "b14951a1ef38864a2225b9597e58a8543a78b57c9a756b62964c927d25c0d773",
           "path": "init.x86_64-windows.dll",
-          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.3/encoding.x86_64-windows.dll"
+          "url": "https://github.com/adamharrison/lite-xl-encoding/releases/download/v1.4/encoding.x86_64-windows.dll"
         }
       ],
       "id": "encoding",
       "type": "library",
-      "version": "1.3"
+      "version": "1.4"
     },
     {
       "dependencies": {
